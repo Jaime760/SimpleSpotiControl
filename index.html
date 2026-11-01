@@ -72,6 +72,18 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .g5 { background-image: linear-gradient(145deg, var(--t5a), var(--t5b)); }
 .g6 { background-image: linear-gradient(145deg, var(--t6a), var(--t6b)); }
 
+.view { display: flex; flex-direction: column; gap: 16px; flex: 1 1 auto; min-height: 0; }
+.player { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.player-top { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.player-art { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; }
+.player-art .now-art { width: min(100%, 48vh, 420px); height: auto; aspect-ratio: 1 / 1; border-radius: 36px; font-size: 96px; box-shadow: 0 6px 0 var(--shadow); }
+.player .now-text { flex: none; width: 100%; text-align: center; }
+.player .now-sub { justify-content: center; }
+.player .controls { gap: 20px; align-items: center; padding-bottom: 8px; }
+.ctl.big { width: 128px; height: 128px; }
+.ctl.big svg { width: 56px; height: 56px; }
+.btn.alt.small, .player-top .btn, .shelf-head .btn { padding: 10px 20px; font-size: 16px; }
+.toast { margin: 0; text-align: center; background: var(--surface); border-radius: 20px; padding: 12px 16px; font-size: 16px; box-shadow: 0 4px 0 var(--shadow); }
 .empty, .login { margin: auto; max-width: 440px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; padding: 16px; }
 .empty h2, .login h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 30px; }
 .empty p, .login p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.4; }
@@ -98,28 +110,37 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 </section>
 
 <main id="appView" style="display:contents" hidden>
-  <section class="now" aria-live="polite">
-    <div class="now-art g1" id="nowArt" aria-hidden="true">♪</div>
+  <section class="player" id="playerView" hidden aria-live="polite">
+    <div class="player-top">
+      <button class="btn alt" id="backBtn">‹ Playlists</button>
+      <span class="hint">On the TV</span>
+    </div>
+    <div class="player-art"><div class="now-art g1" id="nowArt" aria-hidden="true">♪</div></div>
     <div class="now-text">
-      <div class="now-label">On the TV</div>
       <div class="now-title" id="nowTitle">Pick something!</div>
       <div class="now-sub"><span class="dot off" id="dot"></span><span id="nowSub">Getting ready…</span></div>
     </div>
     <div class="controls">
-      <button class="ctl alt" id="pauseBtn" aria-label="Pause or play"><svg viewBox="0 0 24 24" id="pauseIcon"><path d="M7 4l13 8-13 8z"/></svg></button>
-      <button class="ctl" id="nextBtn" aria-label="Next song"><svg viewBox="0 0 24 24"><path d="M6 5l9 7-9 7zM16 5h3v14h-3z"/></svg></button>
+      <button class="ctl alt" id="prevBtn" aria-label="Previous song"><svg viewBox="0 0 24 24"><path d="M18 5l-9 7 9 7zM5 5h3v14H5z"/></svg></button>
+      <button class="ctl big" id="pauseBtn" aria-label="Pause or play"><svg viewBox="0 0 24 24" id="pauseIcon"><path d="M7 4l13 8-13 8z"/></svg></button>
+      <button class="ctl alt" id="nextBtn" aria-label="Next song"><svg viewBox="0 0 24 24"><path d="M6 5l9 7-9 7zM16 5h3v14h-3z"/></svg></button>
     </div>
   </section>
 
+  <div class="view" id="pickView">
+  <p class="toast" id="toast" hidden></p>
+
   <div class="shelf-head">
     <h1 id="shelfTitle">Our Music</h1>
-    <span class="hint">Swipe, then tap</span>
+    <span class="hint" id="hint">Swipe, then tap</span>
+    <button class="btn alt" id="toPlayerBtn" hidden>Now playing</button>
   </div>
 
   <div class="shelf" id="shelf" role="list"></div>
   <div class="empty" id="emptyView" hidden>
     <h2>No playlists yet</h2>
     <p>Grown-ups: name a Spotify playlist starting with <b>Kid -</b> (for example “Kid - Dino Stomp”) and it will show up here.</p>
+  </div>
   </div>
 </main>
 
@@ -208,7 +229,7 @@ async function api(method, path, body, retried) {
 }
 
 /* ---------- State ---------- */
-var playlists = [], current = null, playing = false, lastTap = 0, gradients = ["g1", "g2", "g3", "g4", "g5", "g6"];
+var playlists = [], current = null, playing = false, trackImg = null, lastTap = 0, gradients = ["g1", "g2", "g3", "g4", "g5", "g6"];
 
 function setStatus(msg) { $("nowSub").textContent = msg; }
 function cleanName(n) { return n.replace(PREFIX_RE, "").trim() || n; }
@@ -251,12 +272,18 @@ function render() {
   });
   var art = $("nowArt");
   art.className = "now-art " + (current ? "g" + (1 + (playlists.indexOf(current) % 6)) : "g1");
-  art.style.backgroundImage = current && current.img ? "url(" + JSON.stringify(current.img) + ")" : "";
-  art.textContent = current && !current.img ? current.name.charAt(0).toUpperCase() : (current ? "" : "♪");
+  var img = (playing && trackImg) || (current && current.img);
+  art.style.backgroundImage = img ? "url(" + JSON.stringify(img) + ")" : "";
+  art.textContent = current && !img ? current.name.charAt(0).toUpperCase() : (current ? "" : "♪");
   $("nowTitle").textContent = current ? current.name : "Pick something!";
   $("dot").className = "dot" + (playing ? "" : " off");
   $("pauseIcon").innerHTML = playing ? '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>' : '<path d="M7 4l13 8-13 8z"/>';
+  $("toPlayerBtn").hidden = !(current && playing);
+  $("hint").hidden = !!(current && playing);
 }
+function toast(msg) { var t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 7000); }
+function showPlayer() { $("pickView").hidden = true; $("playerView").hidden = false; }
+function showPick() { $("playerView").hidden = true; $("pickView").hidden = false; render(); }
 
 /* ---------- Playback ---------- */
 async function pickDevice() {
@@ -275,14 +302,14 @@ function explain(e) {
 async function choose(p) {
   var now = Date.now(); if (now - lastTap < 600) return; lastTap = now;
   var prev = current, prevPlaying = playing;
-  current = p; playing = true; render(); setStatus("Starting…");
+  current = p; playing = true; trackImg = null; render(); setStatus("Starting…"); showPlayer();
   try {
     var r = await pickDevice();
-    if (!r.device) { current = prev; playing = prevPlaying; render(); setStatus("TV not found. Turn it on, open Spotify on it."); return; }
+    if (!r.device) { current = prev; playing = prevPlaying; showPick(); toast("TV not found. Turn it on and open Spotify on it."); return; }
     await api("PUT", "/me/player/play?device_id=" + encodeURIComponent(r.device.id), { context_uri: p.uri });
     setStatus("Playing on " + r.device.name);
     setTimeout(sync, 1500);
-  } catch (e) { current = prev; playing = prevPlaying; render(); setStatus(explain(e)); }
+  } catch (e) { current = prev; playing = prevPlaying; showPick(); toast(explain(e)); }
 }
 $("pauseBtn").addEventListener("click", async function () {
   if (!current) return;
@@ -302,13 +329,25 @@ $("nextBtn").addEventListener("click", async function () {
   } catch (e) { setStatus(explain(e)); }
 });
 
-/* Keep the strip honest if someone changes the music from another phone or the TV remote */
+$("prevBtn").addEventListener("click", async function () {
+  if (!current) return;
+  try {
+    var r = await pickDevice(); if (!r.device) return;
+    await api("POST", "/me/player/previous?device_id=" + encodeURIComponent(r.device.id));
+    playing = true; render(); setStatus("Back one song"); setTimeout(sync, 1200);
+  } catch (e) { setStatus(explain(e)); }
+});
+$("backBtn").addEventListener("click", showPick);
+$("toPlayerBtn").addEventListener("click", showPlayer);
+
+/* Keep the player honest if someone changes the music from another phone or the TV remote */
 async function sync() {
   try {
     var s = await api("GET", "/me/player");
     if (!s || !s.device) { playing = false; render(); return; }
     var match = s.context && playlists.filter(function (p) { return p.uri === s.context.uri; })[0];
     if (match) current = match;
+    trackImg = s.item && s.item.album && s.item.album.images && s.item.album.images[0] ? s.item.album.images[0].url : null;
     playing = !!s.is_playing && !!match;
     render();
     setStatus(playing ? (s.item ? s.item.name : "Playing") + " · " + s.device.name : (current ? "Paused" : "Ready on " + s.device.name));
