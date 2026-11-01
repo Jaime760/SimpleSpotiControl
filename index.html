@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#faf4ec">
+<title>Playlist Picker</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700&display=swap">
+<style>
+:root {
+  --bg: #faf4ec; --surface: #fffdf9; --fg: #4a4560; --muted: #857f9a;
+  --accent: #f0b3a0; --accent-fg: #4a3a44; --ring: #6b6585; --shadow: rgba(74, 69, 96, 0.10);
+  --ok: #8fd0bd;
+  --t1a: #f6c9b3; --t1b: #fbe6bf; --t2a: #b3dcd2; --t2b: #d9eebf; --t3a: #c4bdee; --t3b: #f2d0e4;
+  --t4a: #b3d2f0; --t4b: #d0ecf5; --t5a: #f2bec7; --t5b: #f9dccf; --t6a: #d0c2ec; --t6b: #bce6df;
+  --font-display: "Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Nunito", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #25213a; --surface: #302b47; --fg: #f1ebe2; --muted: #b3accb;
+    --accent: #e3a794; --accent-fg: #2a2438; --ring: #d9d2e8; --shadow: rgba(0, 0, 0, 0.30);
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-weight: 700;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: flex; flex-direction: column; gap: 16px;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; overscroll-behavior: none;
+}
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+:focus-visible { outline: 4px solid var(--ring); outline-offset: 3px; }
+[hidden] { display: none !important; }
+
+.now { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: var(--surface); border-radius: 28px; padding: 14px 16px; box-shadow: 0 5px 0 var(--shadow); }
+.now-art { width: 72px; height: 72px; border-radius: 20px; flex: none; display: grid; place-items: center; font-size: 36px; background-size: cover; background-position: center; }
+.now-text { flex: 1 1 160px; min-width: 0; }
+.now-label { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.now-title { font-family: var(--font-display); font-weight: 600; font-size: clamp(24px, 4vw, 34px); line-height: 1.1; overflow-wrap: anywhere; text-wrap: balance; }
+.now-sub { font-size: 14px; color: var(--muted); display: flex; align-items: center; gap: 8px; margin-top: 4px; min-width: 0; }
+.now-sub span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); flex: none; }
+.dot.off { background: var(--muted); }
+.controls { display: flex; gap: 12px; }
+.ctl { min-width: 84px; height: 84px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; box-shadow: 0 5px 0 var(--shadow); transition: transform .12s; }
+.ctl.alt { background: var(--bg); color: var(--fg); border: 4px solid var(--ring); }
+.ctl:active { transform: translateY(4px) scale(.97); box-shadow: 0 1px 0 var(--shadow); }
+.ctl svg { width: 38px; height: 38px; fill: currentColor; }
+
+.shelf-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-inline: 4px; }
+.shelf-head h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 4vw, 36px); }
+.hint { font-size: 14px; color: var(--muted); }
+
+.shelf { flex: 1 1 auto; min-height: 0; display: flex; gap: 16px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; padding: 4px 4px 14px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.shelf::-webkit-scrollbar { display: none; }
+.tile { flex: none; scroll-snap-align: start; width: min(62vw, 300px); display: flex; flex-direction: column; gap: 10px; text-align: left; transition: transform .15s; align-self: flex-start; }
+.tile:active { transform: scale(.97); }
+.cover { aspect-ratio: 1 / 1; width: 100%; border-radius: 32px; position: relative; overflow: hidden; display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; font-size: clamp(64px, 12vw, 104px); color: rgba(74, 69, 96, .55); box-shadow: 0 5px 0 var(--shadow); border: 6px solid transparent; background-size: cover; background-position: center; }
+.tile[aria-pressed="true"] .cover { border-color: var(--ring); }
+.badge { position: absolute; right: 10px; bottom: 10px; background: var(--fg); color: var(--bg); border-radius: 999px; padding: 6px 14px; font-size: 15px; font-family: var(--font-body); display: none; }
+.tile[aria-pressed="true"] .badge { display: block; }
+.name { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 3vw, 28px); line-height: 1.1; padding-inline: 4px; overflow-wrap: anywhere; }
+.g1 { background-image: linear-gradient(145deg, var(--t1a), var(--t1b)); }
+.g2 { background-image: linear-gradient(145deg, var(--t2a), var(--t2b)); }
+.g3 { background-image: linear-gradient(145deg, var(--t3a), var(--t3b)); }
+.g4 { background-image: linear-gradient(145deg, var(--t4a), var(--t4b)); }
+.g5 { background-image: linear-gradient(145deg, var(--t5a), var(--t5b)); }
+.g6 { background-image: linear-gradient(145deg, var(--t6a), var(--t6b)); }
+
+.empty, .login { margin: auto; max-width: 440px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; padding: 16px; }
+.empty h2, .login h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 30px; }
+.empty p, .login p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.4; }
+.btn { background: var(--accent); color: var(--accent-fg); border-radius: 999px; padding: 16px 28px; font-size: 18px; box-shadow: 0 4px 0 var(--shadow); }
+.btn.alt { background: var(--surface); color: var(--fg); border: 3px solid var(--ring); box-shadow: none; }
+
+.parent { position: fixed; inset: 0; background: rgba(40, 34, 58, .55); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.parent-box { background: var(--surface); border-radius: 28px; padding: 22px; width: min(440px, 100%); display: flex; flex-direction: column; gap: 14px; user-select: text; -webkit-user-select: text; }
+.parent-box h3 { margin: 0; font-family: var(--font-display); font-size: 24px; }
+.parent-box label { font-size: 14px; color: var(--muted); }
+.parent-box select { width: 100%; font: inherit; padding: 12px; border-radius: 14px; border: 2px solid var(--ring); background: var(--bg); color: var(--fg); }
+.parent-box small { color: var(--muted); font-weight: 600; line-height: 1.4; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<section class="login" id="loginView" hidden>
+  <h2>Playlist Picker</h2>
+  <p>A grown-up needs to sign in with Spotify once. After that, this screen stays ready.</p>
+  <button class="btn" id="loginBtn">Sign in with Spotify</button>
+  <p id="loginErr" style="color:#c0564a"></p>
+</section>
+
+<main id="appView" style="display:contents" hidden>
+  <section class="now" aria-live="polite">
+    <div class="now-art g1" id="nowArt" aria-hidden="true">♪</div>
+    <div class="now-text">
+      <div class="now-label">On the TV</div>
+      <div class="now-title" id="nowTitle">Pick something!</div>
+      <div class="now-sub"><span class="dot off" id="dot"></span><span id="nowSub">Getting ready…</span></div>
+    </div>
+    <div class="controls">
+      <button class="ctl alt" id="pauseBtn" aria-label="Pause or play"><svg viewBox="0 0 24 24" id="pauseIcon"><path d="M7 4l13 8-13 8z"/></svg></button>
+      <button class="ctl" id="nextBtn" aria-label="Next song"><svg viewBox="0 0 24 24"><path d="M6 5l9 7-9 7zM16 5h3v14h-3z"/></svg></button>
+    </div>
+  </section>
+
+  <div class="shelf-head">
+    <h1 id="shelfTitle">Our Music</h1>
+    <span class="hint">Swipe, then tap</span>
+  </div>
+
+  <div class="shelf" id="shelf" role="list"></div>
+  <div class="empty" id="emptyView" hidden>
+    <h2>No playlists yet</h2>
+    <p>Grown-ups: name a Spotify playlist starting with <b>Kid -</b> (for example “Kid - Dino Stomp”) and it will show up here.</p>
+  </div>
+</main>
+
+<div class="parent" id="parentView" hidden>
+  <div class="parent-box">
+    <h3>Grown-up settings</h3>
+    <div>
+      <label for="deviceSel">Play on this device</label>
+      <select id="deviceSel"></select>
+    </div>
+    <small id="parentInfo"></small>
+    <div class="row">
+      <button class="btn" id="parentClose">Done</button>
+      <button class="btn alt" id="refreshBtn">Refresh playlists</button>
+      <button class="btn alt" id="logoutBtn">Sign out</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Config ---------- */
+var CLIENT_ID = "8f41d87cd631458b8abc04068c14b866";
+var PREFIX_RE = /^kid\s*[-–—:]\s*/i;      // playlists must start with "Kid -"
+var TV_HINT = "roku";                      // used until a device is chosen in grown-up settings
+var SCOPES = "user-read-playback-state user-modify-playback-state playlist-read-private playlist-read-collaborative";
+var REDIRECT = location.origin + location.pathname.replace(/index\.html$/, "");
+
+/* ---------- Helpers ---------- */
+var store = {
+  get: function (k) { try { return localStorage.getItem("kj_" + k); } catch (e) { return null; } },
+  set: function (k, v) { try { localStorage.setItem("kj_" + k, v); } catch (e) {} },
+  del: function (k) { try { localStorage.removeItem("kj_" + k); } catch (e) {} }
+};
+function $(id) { return document.getElementById(id); }
+function rand(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, function (b) { return ("0" + b.toString(16)).slice(-2); }).join(""); }
+async function challenge(s) {
+  var d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(d))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/* ---------- Auth (PKCE, no server) ---------- */
+async function login() {
+  var v = rand(32); store.set("verifier", v);
+  var c = await challenge(v);
+  location.href = "https://accounts.spotify.com/authorize?" + new URLSearchParams({
+    client_id: CLIENT_ID, response_type: "code", redirect_uri: REDIRECT, scope: SCOPES,
+    code_challenge_method: "S256", code_challenge: c
+  });
+}
+function saveTokens(j) {
+  store.set("access", j.access_token);
+  store.set("expires", String(Date.now() + (j.expires_in - 60) * 1000));
+  if (j.refresh_token) store.set("refresh", j.refresh_token);
+}
+async function tokenRequest(params) {
+  var r = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(params)
+  });
+  if (!r.ok) throw new Error("token " + r.status);
+  saveTokens(await r.json());
+}
+async function refresh() {
+  var rt = store.get("refresh"); if (!rt) throw new Error("no refresh");
+  await tokenRequest({ grant_type: "refresh_token", refresh_token: rt, client_id: CLIENT_ID });
+}
+async function token() {
+  if (!store.get("access")) throw new Error("signed out");
+  if (Date.now() > Number(store.get("expires") || 0)) await refresh();
+  return store.get("access");
+}
+function logout() { ["access", "expires", "refresh", "device"].forEach(store.del); location.href = REDIRECT; }
+
+async function api(method, path, body, retried) {
+  var t = await token();
+  var r = await fetch("https://api.spotify.com/v1" + path, {
+    method: method,
+    headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (r.status === 401 && !retried) { await refresh(); return api(method, path, body, true); }
+  if (r.status === 204 || r.status === 202) return null;
+  var text = await r.text(), data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (e) {}
+  if (!r.ok) { var err = new Error("api " + r.status); err.status = r.status; err.reason = data && data.error && data.error.reason; throw err; }
+  return data;
+}
+
+/* ---------- State ---------- */
+var playlists = [], current = null, playing = false, lastTap = 0, gradients = ["g1", "g2", "g3", "g4", "g5", "g6"];
+
+function setStatus(msg) { $("nowSub").textContent = msg; }
+function cleanName(n) { return n.replace(PREFIX_RE, "").trim() || n; }
+
+async function loadPlaylists() {
+  var out = [], url = "/me/playlists?limit=50";
+  while (url) {
+    var j = await api("GET", url);
+    (j.items || []).forEach(function (p) {
+      if (p && PREFIX_RE.test(p.name)) out.push({
+        uri: p.uri, name: cleanName(p.name), img: p.images && p.images[0] && p.images[0].url
+      });
+    });
+    url = j.next ? j.next.replace("https://api.spotify.com/v1", "") : null;
+  }
+  playlists = out; renderShelf();
+}
+
+function renderShelf() {
+  var shelf = $("shelf"); shelf.textContent = "";
+  $("emptyView").hidden = playlists.length > 0; shelf.hidden = playlists.length === 0;
+  playlists.forEach(function (p, i) {
+    var b = document.createElement("button");
+    b.className = "tile"; b.setAttribute("role", "listitem"); b.setAttribute("aria-pressed", "false"); b.dataset.uri = p.uri;
+    var cover = document.createElement("div");
+    cover.className = "cover " + gradients[i % gradients.length];
+    if (p.img) { cover.style.backgroundImage = "url(" + JSON.stringify(p.img) + ")"; } else { cover.textContent = p.name.charAt(0).toUpperCase(); }
+    var badge = document.createElement("div"); badge.className = "badge"; badge.textContent = "Playing"; cover.appendChild(badge);
+    var name = document.createElement("div"); name.className = "name"; name.textContent = p.name;
+    b.appendChild(cover); b.appendChild(name);
+    b.addEventListener("click", function () { choose(p); });
+    shelf.appendChild(b);
+  });
+  render();
+}
+
+function render() {
+  document.querySelectorAll(".tile").forEach(function (t) {
+    t.setAttribute("aria-pressed", String(!!current && playing && t.dataset.uri === current.uri));
+  });
+  var art = $("nowArt");
+  art.className = "now-art " + (current ? "g" + (1 + (playlists.indexOf(current) % 6)) : "g1");
+  art.style.backgroundImage = current && current.img ? "url(" + JSON.stringify(current.img) + ")" : "";
+  art.textContent = current && !current.img ? current.name.charAt(0).toUpperCase() : (current ? "" : "♪");
+  $("nowTitle").textContent = current ? current.name : "Pick something!";
+  $("dot").className = "dot" + (playing ? "" : " off");
+  $("pauseIcon").innerHTML = playing ? '<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>' : '<path d="M7 4l13 8-13 8z"/>';
+}
+
+/* ---------- Playback ---------- */
+async function pickDevice() {
+  var j = await api("GET", "/me/player/devices"), list = (j && j.devices) || [];
+  var saved = store.get("device");
+  var d = list.filter(function (x) { return x.id === saved; })[0] ||
+          list.filter(function (x) { return x.name.toLowerCase().indexOf(TV_HINT) >= 0; })[0];
+  return { device: d || null, list: list };
+}
+function explain(e) {
+  if (e.status === 404) return "The TV isn't ready. Turn it on and open Spotify once.";
+  if (e.status === 403) return "Spotify says no. Premium is needed.";
+  if (e.status === 429) return "Too many taps, try again in a moment.";
+  return "Something went wrong. Try again.";
+}
+async function choose(p) {
+  var now = Date.now(); if (now - lastTap < 600) return; lastTap = now;
+  var prev = current, prevPlaying = playing;
+  current = p; playing = true; render(); setStatus("Starting…");
+  try {
+    var r = await pickDevice();
+    if (!r.device) { current = prev; playing = prevPlaying; render(); setStatus("TV not found. Turn it on, open Spotify on it."); return; }
+    await api("PUT", "/me/player/play?device_id=" + encodeURIComponent(r.device.id), { context_uri: p.uri });
+    setStatus("Playing on " + r.device.name);
+    setTimeout(sync, 1500);
+  } catch (e) { current = prev; playing = prevPlaying; render(); setStatus(explain(e)); }
+}
+$("pauseBtn").addEventListener("click", async function () {
+  if (!current) return;
+  try {
+    var r = await pickDevice(); if (!r.device) return;
+    if (playing) { await api("PUT", "/me/player/pause?device_id=" + encodeURIComponent(r.device.id)); playing = false; setStatus("Paused"); }
+    else { await api("PUT", "/me/player/play?device_id=" + encodeURIComponent(r.device.id)); playing = true; setStatus("Playing on " + r.device.name); }
+    render();
+  } catch (e) { setStatus(explain(e)); }
+});
+$("nextBtn").addEventListener("click", async function () {
+  if (!current) return;
+  try {
+    var r = await pickDevice(); if (!r.device) return;
+    await api("POST", "/me/player/next?device_id=" + encodeURIComponent(r.device.id));
+    playing = true; render(); setStatus("Next song!"); setTimeout(sync, 1200);
+  } catch (e) { setStatus(explain(e)); }
+});
+
+/* Keep the strip honest if someone changes the music from another phone or the TV remote */
+async function sync() {
+  try {
+    var s = await api("GET", "/me/player");
+    if (!s || !s.device) { playing = false; render(); return; }
+    var match = s.context && playlists.filter(function (p) { return p.uri === s.context.uri; })[0];
+    if (match) current = match;
+    playing = !!s.is_playing && !!match;
+    render();
+    setStatus(playing ? (s.item ? s.item.name : "Playing") + " · " + s.device.name : (current ? "Paused" : "Ready on " + s.device.name));
+  } catch (e) {}
+}
+
+/* ---------- Grown-up settings: press and hold the title for 2 seconds ---------- */
+var holdTimer;
+$("shelfTitle").addEventListener("pointerdown", function () { holdTimer = setTimeout(openParent, 2000); });
+["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) { $("shelfTitle").addEventListener(ev, function () { clearTimeout(holdTimer); }); });
+async function openParent() {
+  $("parentView").hidden = false;
+  var sel = $("deviceSel"); sel.textContent = "";
+  try {
+    var r = await pickDevice(), saved = store.get("device");
+    if (!r.list.length) sel.innerHTML = "<option>No devices found. Open Spotify on the TV.</option>";
+    r.list.forEach(function (d) {
+      var o = document.createElement("option"); o.value = d.id; o.textContent = d.name;
+      o.selected = d.id === saved || (!saved && r.device && d.id === r.device.id); sel.appendChild(o);
+    });
+    $("parentInfo").textContent = "Showing playlists whose names start with “Kid -”. " + playlists.length + " found.";
+  } catch (e) { sel.innerHTML = "<option>Could not load devices</option>"; }
+}
+$("deviceSel").addEventListener("change", function (e) { if (e.target.value) store.set("device", e.target.value); });
+$("parentClose").addEventListener("click", function () { $("parentView").hidden = true; });
+$("refreshBtn").addEventListener("click", async function () { try { await loadPlaylists(); $("parentInfo").textContent = playlists.length + " playlists found."; } catch (e) {} });
+$("logoutBtn").addEventListener("click", logout);
+$("loginBtn").addEventListener("click", login);
+
+/* ---------- Boot ---------- */
+async function boot() {
+  var q = new URLSearchParams(location.search);
+  try {
+    if (q.get("code")) {
+      await tokenRequest({ grant_type: "authorization_code", code: q.get("code"), redirect_uri: REDIRECT, client_id: CLIENT_ID, code_verifier: store.get("verifier") || "" });
+      history.replaceState(null, "", REDIRECT);
+    } else if (q.get("error")) {
+      $("loginView").hidden = false; $("loginErr").textContent = "Spotify sign-in was cancelled. Try again."; history.replaceState(null, "", REDIRECT); return;
+    }
+    if (!store.get("access")) { $("loginView").hidden = false; return; }
+    await token();
+    $("appView").hidden = false;
+    await loadPlaylists(); setStatus("Ready"); await sync();
+    setInterval(sync, 6000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) { loadPlaylists().catch(function () {}); sync(); } });
+  } catch (e) {
+    $("appView").hidden = true; $("loginView").hidden = false;
+    $("loginErr").textContent = e.message === "signed out" ? "" : "Please sign in again.";
+  }
+}
+boot();
+</script>
+</body>
+</html>
