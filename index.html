@@ -11,7 +11,7 @@
 <style>
 :root {
   --bg: #faf4ec; --surface: #fffdf9; --fg: #4a4560; --muted: #857f9a;
-  --accent: #f0b3a0; --accent-fg: #4a3a44; --ring: #6b6585; --shadow: rgba(74, 69, 96, 0.10);
+  --accent: #f0b3a0; --accent-fg: #4a3a44; --ring: #6b6585; --shadow: rgba(74, 69, 96, 0.10); --on-tile: #3f3a55;
   --ok: #8fd0bd;
   --t1a: #f6c9b3; --t1b: #fbe6bf; --t2a: #b3dcd2; --t2b: #d9eebf; --t3a: #c4bdee; --t3b: #f2d0e4;
   --t4a: #b3d2f0; --t4b: #d0ecf5; --t5a: #f2bec7; --t5b: #f9dccf; --t6a: #d0c2ec; --t6b: #bce6df;
@@ -79,10 +79,14 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .player-art .now-art { width: clamp(88px, 18vh, 140px); height: auto; aspect-ratio: 1 / 1; border-radius: 28px; font-size: 52px; box-shadow: 0 5px 0 var(--shadow); }
 .player .now-text { flex: none; width: 100%; text-align: center; }
 .player .now-sub { justify-content: center; }
-.player .controls { flex: 1 1 auto; min-height: 0; justify-content: center; align-items: center; gap: clamp(14px, 3vw, 28px); padding-bottom: 8px; --s: clamp(84px, min(22vw, 26vh), 190px); --sb: clamp(110px, min(34vw, 40vh), 280px); }
-.player .ctl { width: var(--s); height: var(--s); min-width: 0; box-shadow: 0 7px 0 var(--shadow); }
-.player .ctl.big { width: var(--sb); height: var(--sb); }
-.player .ctl svg { width: 46%; height: 46%; }
+.player .now-title { font-size: clamp(22px, 3.5vw, 30px); }
+.player .controls { flex: 1 1 auto; min-height: 0; width: 100%; align-items: stretch; gap: 12px; padding-bottom: 8px; }
+.player .ctl { flex: 1 1 0; width: auto; height: auto; min-width: 0; border: 0; border-radius: 36px; box-shadow: 0 6px 0 var(--shadow); color: var(--on-tile); }
+.player .ctl.big { flex: 1.4 1 0; background: var(--accent); color: var(--accent-fg); }
+.player #prevBtn { background: var(--t4a); }
+.player #nextBtn { background: var(--t3a); }
+.player .ctl svg { width: min(55%, 140px); height: auto; aspect-ratio: 1 / 1; }
+.player .ctl:active { transform: scale(.98); box-shadow: 0 2px 0 var(--shadow); }
 .btn.alt.small, .player-top .btn, .shelf-head .btn { padding: 10px 20px; font-size: 16px; }
 .toast { margin: 0; text-align: center; background: var(--surface); border-radius: 20px; padding: 12px 16px; font-size: 16px; box-shadow: 0 4px 0 var(--shadow); }
 .empty, .login { margin: auto; max-width: 440px; text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; padding: 16px; }
@@ -116,7 +120,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
       <button class="btn alt" id="backBtn">‹ Playlists</button>
       <span class="hint">On the TV</span>
     </div>
-    <div class="player-art"><div class="now-art g1" id="nowArt" aria-hidden="true">♪</div></div>
+    <div class="player-art" hidden><div class="now-art g1" id="nowArt" aria-hidden="true">♪</div></div>
     <div class="now-text">
       <div class="now-title" id="nowTitle">Pick something!</div>
       <div class="now-sub"><span class="dot off" id="dot"></span><span id="nowSub">Getting ready…</span></div>
