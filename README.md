@@ -1,6 +1,8 @@
 # Playlist Picker
 
-A single-page tablet remote for a young child. It shows only the Spotify playlists that the parents have chosen, as large swipeable tiles. Tapping a tile starts that playlist on the living room TV and opens a simple player with three full-height controls: previous, play/pause, and next.
+A single-page tablet remote for a young child. It shows the songs from the parent-chosen `Kid -` Spotify playlist as a scrolling grid of album-art tiles. Tapping a tile plays that song on the living room TV, and a bar at the bottom has one big play/pause button. The grid is paged, so it works for hundreds of songs.
+
+On a phone or tablet the page cannot stop a child from leaving it. Use Guided Access (iPhone/iPad) or screen pinning (Android), described below, to lock the device to the page.
 
 The page is one static file (`index.html`). It has no server, no build step, and no dependencies beyond Google Fonts.
 
